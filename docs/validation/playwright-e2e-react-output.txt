@@ -1,0 +1,13 @@
+
+Running 8 tests using 1 worker
+
+  ok 1 e2e\control-plane.spec.ts:13:1 › rejects a wrong password with a generic message (3.0s)
+  ok 2 e2e\control-plane.spec.ts:19:1 › unauthenticated users are redirected to the login page (1.2s)
+  ok 3 e2e\control-plane.spec.ts:24:1 › admin can sign in, browse the registry and open an API with its policy history (3.2s)
+  ok 4 e2e\control-plane.spec.ts:35:1 › registry filter narrows the list and shows an empty state when nothing matches (1.9s)
+  ok 5 e2e\control-plane.spec.ts:42:1 › server rejects an SSRF backend target and the UI explains why (2.3s)
+  ok 6 e2e\control-plane.spec.ts:52:1 › viewer does not see approvals or audit in the navigation and is redirected from them (1.6s)
+  ok 7 e2e\control-plane.spec.ts:61:1 › operator can open the incident investigation with evidence and suggested steps (1.7s)
+  ok 8 e2e\control-plane.spec.ts:68:1 › approver sees the audit history (1.4s)
+
+  8 passed (24.0s)

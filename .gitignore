@@ -1,0 +1,29 @@
+# build output
+target/
+dist/
+node_modules/
+coverage/
+.angular/
+test-results/
+playwright-report/
+.run/
+
+# secrets and local config - never commit
+.env
+*.pem
+*.key
+*.p12
+*.jks
+secrets/
+*.local.yml
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# generated deliverables are rebuilt by scripts/build-docs.sh
+docs/pdf/node_modules/
+*.zip

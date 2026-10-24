@@ -1,0 +1,58 @@
+-- select * from traffic_bucket where route_slug = ? and bucket_start > dateadd('MINUTE', -15, current_timestamp) order by bucket_start
+SELECT
+    "public"."traffic_bucket"."id",
+    "public"."traffic_bucket"."batch_id",
+    "public"."traffic_bucket"."route_slug",
+    "public"."traffic_bucket"."bucket_start",
+    "public"."traffic_bucket"."requests",
+    "public"."traffic_bucket"."errors_4xx",
+    "public"."traffic_bucket"."errors_5xx",
+    "public"."traffic_bucket"."rate_limited",
+    "public"."traffic_bucket"."auth_failures",
+    "public"."traffic_bucket"."timeouts",
+    "public"."traffic_bucket"."latency_sum_ms",
+    "public"."traffic_bucket"."latency_max_ms"
+FROM "public"."traffic_bucket"
+    /* public.idx_bucket_route_time: route_slug = ?1
+        AND bucket_start > DATEADD(MINUTE, -15, CURRENT_TIMESTAMP)
+     */
+WHERE ("route_slug" = ?1)
+    AND ("bucket_start" > DATEADD(MINUTE, -15, CURRENT_TIMESTAMP))
+ORDER BY 4
+
+-- select * from audit_event where entity_type = ? and entity_id = ? order by ts desc limit 25
+SELECT
+    "public"."audit_event"."id",
+    "public"."audit_event"."ts",
+    "public"."audit_event"."actor",
+    "public"."audit_event"."action",
+    "public"."audit_event"."entity_type",
+    "public"."audit_event"."entity_id",
+    "public"."audit_event"."detail",
+    "public"."audit_event"."correlation_id"
+FROM "public"."audit_event"
+    /* public.idx_audit_entity_ts: entity_type = ?1
+        AND entity_id = ?2
+     */
+WHERE ("entity_type" = ?1)
+    AND ("entity_id" = ?2)
+ORDER BY 2 DESC
+FETCH FIRST 25 ROWS ONLY
+
+-- select * from api_definition where owner_team = ? and lifecycle = ?
+SELECT
+    "public"."api_definition"."id",
+    "public"."api_definition"."slug",
+    "public"."api_definition"."name",
+    "public"."api_definition"."owner_team",
+    "public"."api_definition"."lifecycle",
+    "public"."api_definition"."description",
+    "public"."api_definition"."created_at",
+    "public"."api_definition"."updated_at",
+    "public"."api_definition"."version"
+FROM "public"."api_definition"
+    /* public.idx_api_owner_lifecycle: owner_team = ?1
+        AND lifecycle = ?2
+     */
+WHERE ("owner_team" = ?1)
+    AND ("lifecycle" = ?2)

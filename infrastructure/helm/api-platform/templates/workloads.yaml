@@ -1,0 +1,143 @@
+{{- /* One Deployment + Service + ServiceAccount (+HPA, PDB) per enabled component. */ -}}
+{{- range $key, $comp := .Values.components }}
+{{- if $comp.enabled }}
+{{- $ctx := dict "root" $ "comp" $comp }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "ap.fullname" $ctx }}
+  labels: {{- include "ap.labels" $ctx | nindent 4 }}
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ap.fullname" $ctx }}
+  labels: {{- include "ap.labels" $ctx | nindent 4 }}
+spec:
+  {{- if not (and $comp.hpa $comp.hpa.enabled) }}
+  replicas: {{ $comp.replicas }}
+  {{- end }}
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels: {{- include "ap.selector" $ctx | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  template:
+    metadata:
+      labels: {{- include "ap.labels" $ctx | nindent 8 }}
+      annotations:
+        # roll pods when shared configuration changes
+        checksum/config: {{ toYaml $.Values.config | sha256sum }}
+        {{- if $comp.scrape }}
+        prometheus.io/scrape: "true"
+        prometheus.io/path: {{ $comp.scrape.path | quote }}
+        prometheus.io/port: {{ $comp.port | quote }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "ap.fullname" $ctx }}
+      terminationGracePeriodSeconds: {{ $.Values.global.terminationGracePeriodSeconds }}
+      {{- with $.Values.global.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml $.Values.podSecurityContext | nindent 8 }}
+        runAsUser: {{ $comp.runAsUser }}
+        runAsGroup: {{ $comp.runAsUser }}
+      containers:
+        - name: {{ $comp.name }}
+          image: {{ include "ap.image" $ctx | quote }}
+          imagePullPolicy: {{ $comp.image.pullPolicy }}
+          ports:
+            - { name: http, containerPort: {{ $comp.port }} }
+          {{- if $comp.useSecret }}
+          envFrom:
+            - configMapRef: { name: {{ $.Release.Name }}-config }
+            - secretRef: { name: {{ $.Values.global.existingSecret }} }
+          {{- end }}
+          env:
+            {{- range $k, $v := $comp.env }}
+            - { name: {{ $k }}, value: {{ $v | quote }} }
+            {{- end }}
+            - name: HOSTNAME
+              valueFrom: { fieldRef: { fieldPath: metadata.name } }
+          resources: {{- toYaml $comp.resources | nindent 12 }}
+          startupProbe:
+            httpGet: { path: {{ $comp.probes.startup }}, port: http }
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: { path: {{ $comp.probes.readiness }}, port: http }
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: {{ $comp.probes.liveness }}, port: http }
+            periodSeconds: 10
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              exec: { command: ["sh", "-c", "sleep {{ $.Values.global.preStopSleepSeconds }}"] }
+          securityContext: {{- toYaml $.Values.containerSecurityContext | nindent 12 }}
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            {{- range $comp.tmpDirs }}
+            {{- if ne . "/tmp" }}
+            - { name: {{ . | replace "/" "-" | trimPrefix "-" }}, mountPath: {{ . }} }
+            {{- end }}
+            {{- end }}
+            {{- if $comp.snapshotCache }}
+            - { name: snapshot-cache, mountPath: /var/lib/gateway }
+            {{- end }}
+      volumes:
+        - { name: tmp, emptyDir: { sizeLimit: 64Mi } }
+        {{- range $comp.tmpDirs }}
+        {{- if ne . "/tmp" }}
+        - { name: {{ . | replace "/" "-" | trimPrefix "-" }}, emptyDir: {} }
+        {{- end }}
+        {{- end }}
+        {{- if $comp.snapshotCache }}
+        - { name: snapshot-cache, emptyDir: { sizeLimit: 16Mi } }
+        {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ap.fullname" $ctx }}
+  labels: {{- include "ap.labels" $ctx | nindent 4 }}
+spec:
+  selector: {{- include "ap.selector" $ctx | nindent 4 }}
+  ports:
+    - { name: http, port: {{ $comp.port }}, targetPort: http }
+{{- if $comp.pdb }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "ap.fullname" $ctx }}
+spec:
+  {{- if $comp.pdb.minAvailable }}
+  minAvailable: {{ $comp.pdb.minAvailable }}
+  {{- else }}
+  maxUnavailable: {{ $comp.pdb.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels: {{- include "ap.selector" $ctx | nindent 6 }}
+{{- end }}
+{{- if and $comp.hpa $comp.hpa.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "ap.fullname" $ctx }}
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: {{ include "ap.fullname" $ctx }} }
+  minReplicas: {{ $comp.hpa.min }}
+  maxReplicas: {{ $comp.hpa.max }}
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: {{ $comp.hpa.cpu }} } }
+{{- end }}
+{{- end }}
+{{- end }}

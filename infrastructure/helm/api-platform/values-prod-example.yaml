@@ -1,0 +1,21 @@
+# Example production overrides. helm upgrade --install api-platform . -n api-platform -f values-prod-example.yaml
+# Pin images by digest (image.tag: "sha256-..." or use image.digest in a fork of the templates) and sign them in CI.
+global:
+  existingSecret: platform-secrets          # synced from your secret manager (External Secrets / CSI), never stored in git
+
+config:
+  ALLOWED_BACKEND_HOSTS: "orders-service,*.svc.cluster.local"
+  EXPECTED_REPLICAS: "6"
+  TRACE_SAMPLING: "0.02"
+
+components:
+  gateway:
+    replicas: 6
+    hpa: { enabled: true, min: 6, max: 40, cpu: 55 }
+    resources: { requests: { cpu: "1", memory: 512Mi }, limits: { cpu: "2", memory: 768Mi } }
+  controlPlane:
+    replicas: 3
+
+ingress:
+  gatewayHost: api.mycompany.example
+  consoleHost: console.mycompany.example

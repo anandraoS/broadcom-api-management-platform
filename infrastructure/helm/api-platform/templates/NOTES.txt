@@ -1,0 +1,11 @@
+api-platform {{ .Chart.AppVersion }} installed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Before this works the Secret "{{ .Values.global.existingSecret }}" must exist with keys:
+  DB_PASSWORD, GATEWAY_SERVICE_TOKEN, OIDC_ISSUER_URI
+(create it out-of-band or sync it from your secret manager - values are never stored in this chart).
+
+Gateway data plane : https://{{ .Values.ingress.gatewayHost }}/gw/<api>/<version>/...
+Management console : https://{{ .Values.ingress.consoleHost }}/
+
+Verify: kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ .Release.Name }}-gateway
+Rollback: helm rollback {{ .Release.Name }} <revision>

@@ -1,0 +1,6 @@
+# Real gateway -> control-plane telemetry shipping (after smoke + e2e run, 30-minute window)
+# Seeded synthetic routes: orders, legacy-billing. Real shipped routes: orders/v1, unmatched
+"route":"orders","requests":8400
+"route":"legacy-billing","requests":2800
+"route":"orders/v1","requests":20
+"route":"unmatched","requests":1

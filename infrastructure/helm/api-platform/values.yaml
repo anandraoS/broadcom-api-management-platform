@@ -1,0 +1,99 @@
+# Default values. Secrets are NEVER set here: reference an existing Secret (global.existingSecret) created out-of-band
+# or synced from a secret manager. See docs/kubernetes-and-helm.md.
+global:
+  existingSecret: platform-secrets        # must contain DB_PASSWORD, GATEWAY_SERVICE_TOKEN, OIDC_ISSUER_URI
+  imagePullSecrets: []
+  terminationGracePeriodSeconds: 40
+  preStopSleepSeconds: 10                 # drain: let endpoints deregister before SIGTERM; keep (preStop + app shutdown) < grace period
+
+config:                                   # non-secret settings, rendered into a ConfigMap shared by all Java workloads
+  CONTROL_PLANE_URL: http://{{ .Release.Name }}-control-plane:8080
+  ALLOWED_BACKEND_HOSTS: "{{ .Release.Name }}-orders-service"
+  ALLOW_LOOPBACK_BACKENDS: "false"
+  REDIS_ENABLED: "true"
+  REDIS_HOST: redis
+  REDIS_FAIL_MODE: LOCAL
+  EXPECTED_REPLICAS: "3"
+  TRUST_FORWARDED_FOR: "true"
+  TRACE_SAMPLING: "0.05"
+  OTLP_TRACES_ENDPOINT: http://otel-collector.observability:4318/v1/traces
+  CORS_ORIGINS: https://api-console.example.com
+  DB_URL: jdbc:mysql://mysql:3306/apiplatform?useSSL=true&serverTimezone=UTC
+  DB_USERNAME: apiplatform
+
+podSecurityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+containerSecurityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: ["ALL"] } }
+
+components:
+  controlPlane:
+    enabled: true
+    name: control-plane
+    image: { repository: registry.example.com/api-platform/control-plane, tag: "", pullPolicy: IfNotPresent }   # tag defaults to appVersion
+    replicas: 2
+    port: 8080
+    runAsUser: 10001
+    useSecret: true
+    env: { DEV_AUTH_ENABLED: "false" }
+    resources: { requests: { cpu: 250m, memory: 512Mi }, limits: { cpu: "1", memory: 768Mi } }
+    probes: { startup: /actuator/health/liveness, readiness: /actuator/health/readiness, liveness: /actuator/health/liveness }
+    hpa: { enabled: true, min: 2, max: 6, cpu: 70 }
+    pdb: { minAvailable: 1 }
+    scrape: { path: /actuator/prometheus }
+  gateway:
+    enabled: true
+    name: gateway
+    image: { repository: registry.example.com/api-platform/gateway, tag: "", pullPolicy: IfNotPresent }
+    replicas: 3
+    port: 8081
+    runAsUser: 10001
+    useSecret: true
+    snapshotCache: true                   # emptyDir mounted at /var/lib/gateway (last-known-good config across container restarts)
+    env: {}
+    resources: { requests: { cpu: 500m, memory: 384Mi }, limits: { cpu: "2", memory: 512Mi } }
+    probes: { startup: /actuator/health/liveness, readiness: /actuator/health/readiness, liveness: /actuator/health/liveness }
+    hpa: { enabled: true, min: 3, max: 20, cpu: 60 }
+    pdb: { maxUnavailable: 1 }
+    scrape: { path: /actuator/prometheus }
+  frontend:
+    enabled: true
+    name: frontend
+    image: { repository: registry.example.com/api-platform/frontend, tag: "", pullPolicy: IfNotPresent }
+    replicas: 2
+    port: 8080
+    runAsUser: 101
+    useSecret: false
+    tmpDirs: [/tmp, /var/cache/nginx]
+    env: {}
+    resources: { requests: { cpu: 50m, memory: 32Mi }, limits: { cpu: 250m, memory: 64Mi } }
+    probes: { startup: /healthz, readiness: /healthz, liveness: /healthz }
+    hpa: { enabled: false }
+    pdb: { minAvailable: 1 }
+  ordersService:
+    enabled: true
+    name: orders-service
+    image: { repository: registry.example.com/api-platform/orders-service, tag: "", pullPolicy: IfNotPresent }
+    replicas: 2
+    port: 9001
+    runAsUser: 10001
+    useSecret: false
+    env: { PORT: "9001" }
+    resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 500m, memory: 256Mi } }
+    probes: { startup: /actuator/health/liveness, readiness: /actuator/health/readiness, liveness: /actuator/health/liveness }
+    hpa: { enabled: false }
+    pdb: { minAvailable: 1 }
+    scrape: { path: /actuator/prometheus }
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: 2m
+  tlsSecretName: api-platform-tls
+  gatewayHost: api.example.com
+  consoleHost: api-console.example.com
+
+networkPolicy:
+  enabled: true
+  ingressNamespace: ingress-nginx
+  observabilityNamespace: observability

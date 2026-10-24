@@ -1,0 +1,15 @@
+**/target
+**/node_modules
+**/dist
+.run
+.git
+*.md.bak
+docs
+ai-engineering
+specs
+performance
+tests
+scripts
+.github
+observability
+infrastructure

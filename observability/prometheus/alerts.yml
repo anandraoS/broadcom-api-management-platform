@@ -1,0 +1,59 @@
+# Symptom-based alerts (user-visible impact) first; cause-based alerts are for diagnosis dashboards.
+groups:
+  - name: gateway-slo
+    rules:
+      - alert: GatewayHighErrorRate
+        expr: |
+          sum(rate(gateway_requests_seconds_count{status_class="5xx"}[5m]))
+            / sum(rate(gateway_requests_seconds_count[5m])) > 0.05
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: "Gateway 5xx ratio above 5% for 5 minutes"
+          runbook: "docs/runbooks/incident-response.md#elevated-5xx"
+      - alert: GatewayHighLatencyP95
+        expr: |
+          histogram_quantile(0.95, sum by (le, route) (rate(gateway_requests_seconds_bucket[5m]))) > 1
+        for: 10m
+        labels: { severity: ticket }
+        annotations:
+          summary: "p95 latency above 1s on {{ $labels.route }}"
+          runbook: "docs/troubleshooting/02-latency-after-release.md"
+      - alert: GatewayConfigStale
+        expr: gateway_snapshot_age_seconds > 120 or gateway_snapshot_age_seconds == -1
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: "Gateway {{ $labels.instance }} has not refreshed configuration for over 2 minutes"
+          runbook: "docs/runbooks/control-plane-outage.md"
+      - alert: GatewayTelemetryDropping
+        expr: rate(gateway_telemetry_dropped_total[10m]) > 0
+        for: 10m
+        labels: { severity: ticket }
+        annotations: { summary: "Gateway is dropping telemetry (control plane slow/unreachable?)" }
+      - alert: RateLimiterRedisFailing
+        expr: rate(gateway_ratelimit_redis_failures_total[5m]) > 0
+        for: 2m
+        labels: { severity: ticket }
+        annotations:
+          summary: "Redis rate limiter failing; gateways are in degraded rate-limit mode"
+          runbook: "docs/troubleshooting/03-redis-rate-limit-inconsistent.md"
+  - name: platform-health
+    rules:
+      - alert: TargetDown
+        expr: up == 0
+        for: 2m
+        labels: { severity: page }
+        annotations: { summary: "{{ $labels.job }} {{ $labels.instance }} is down" }
+      - alert: HikariPoolSaturated
+        expr: hikaricp_connections_pending > 0
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: "Threads are waiting for DB connections on {{ $labels.application }}"
+          runbook: "docs/troubleshooting/04-mysql-pool-exhaustion.md"
+      - alert: JvmHeapNearLimit
+        expr: sum by (instance) (jvm_memory_used_bytes{area="heap"}) / sum by (instance) (jvm_memory_max_bytes{area="heap"}) > 0.9
+        for: 10m
+        labels: { severity: ticket }
+        annotations: { summary: "Heap above 90% for 10 minutes on {{ $labels.instance }}", runbook: "docs/troubleshooting/05-high-jvm-memory.md" }

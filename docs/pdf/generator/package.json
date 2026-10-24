@@ -1,0 +1,8 @@
+{
+  "name": "api-platform-docs-pdf",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Generates the two PDF guides from structured content (pdfkit)",
+  "scripts": { "build": "node build.js" },
+  "dependencies": { "pdfkit": "0.15.0" }
+}

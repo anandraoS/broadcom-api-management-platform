@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: control-plane, namespace: api-platform }
+automountServiceAccountToken: false   # the app never calls the Kubernetes API: no token mounted (least privilege)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: control-plane
+  namespace: api-platform
+  labels: { app: control-plane, app.kubernetes.io/part-of: api-platform }
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector: { matchLabels: { app: control-plane } }
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }   # never drop below desired capacity during a rollout
+  template:
+    metadata:
+      labels: { app: control-plane }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/path: /actuator/prometheus, prometheus.io/port: "8080" }
+    spec:
+      serviceAccountName: control-plane
+      terminationGracePeriodSeconds: 40
+      securityContext: { runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, seccompProfile: { type: RuntimeDefault } }
+      topologySpreadConstraints:
+        - { maxSkew: 1, topologyKey: kubernetes.io/hostname, whenUnsatisfiable: ScheduleAnyway, labelSelector: { matchLabels: { app: control-plane } } }
+      containers:
+        - name: control-plane
+          image: registry.example.com/api-platform/control-plane:1.0.0   # pin by digest in production
+          imagePullPolicy: IfNotPresent
+          ports: [{ name: http, containerPort: 8080 }]
+          envFrom:
+            - configMapRef: { name: platform-config }
+            - secretRef: { name: platform-secrets }
+          env:
+            - { name: DEV_AUTH_ENABLED, value: "false" }   # production: OIDC only
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+            limits: { cpu: "1", memory: 768Mi }              # JVM heap = 75% of the memory limit (MaxRAMPercentage)
+          startupProbe:   { httpGet: { path: /actuator/health/liveness, port: http }, periodSeconds: 5, failureThreshold: 30 }
+          readinessProbe: { httpGet: { path: /actuator/health/readiness, port: http }, periodSeconds: 5, failureThreshold: 3 }
+          livenessProbe:  { httpGet: { path: /actuator/health/liveness, port: http }, periodSeconds: 10, failureThreshold: 3 }
+          lifecycle:
+            preStop: { exec: { command: ["sh", "-c", "sleep 10"] } }   # let the endpoint controller drain us before SIGTERM
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: { sizeLimit: 64Mi } }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: control-plane, namespace: api-platform, labels: { app: control-plane } }
+spec:
+  selector: { app: control-plane }
+  ports: [{ name: http, port: 8080, targetPort: http }]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: control-plane, namespace: api-platform }
+spec:
+  minAvailable: 1
+  selector: { matchLabels: { app: control-plane } }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: control-plane, namespace: api-platform }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: control-plane }
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: 70 } }

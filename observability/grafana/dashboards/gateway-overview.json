@@ -1,0 +1,91 @@
+{
+  "uid": "gateway-overview",
+  "title": "API Gateway - Overview and Investigation",
+  "tags": ["api-platform", "gateway"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "route", "label": "Route", "type": "query", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(gateway_requests_seconds_count, route)", "refresh": 2, "includeAll": true, "multi": true, "allValue": ".*",
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1, "type": "timeseries", "title": "Request rate by route (req/s)", "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum by (route) (rate(gateway_requests_seconds_count{route=~\"$route\"}[1m]))", "legendFormat": "{{route}}" }]
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "5xx error ratio", "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0 }, "overrides": [] },
+      "targets": [{ "refId": "A", "expr": "sum by (route) (rate(gateway_requests_seconds_count{route=~\"$route\",status_class=\"5xx\"}[5m])) / sum by (route) (rate(gateway_requests_seconds_count{route=~\"$route\"}[5m]))", "legendFormat": "{{route}}" }]
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "Latency percentiles (histogram_quantile, all routes selected)", "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.50, sum by (le) (rate(gateway_requests_seconds_bucket{route=~\"$route\"}[5m])))", "legendFormat": "p50" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le) (rate(gateway_requests_seconds_bucket{route=~\"$route\"}[5m])))", "legendFormat": "p95" },
+        { "refId": "C", "expr": "histogram_quantile(0.99, sum by (le) (rate(gateway_requests_seconds_bucket{route=~\"$route\"}[5m])))", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "Responses by status class", "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "custom": { "stacking": { "mode": "normal" }, "fillOpacity": 40 } }, "overrides": [] },
+      "targets": [{ "refId": "A", "expr": "sum by (status_class) (rate(gateway_requests_seconds_count{route=~\"$route\"}[1m]))", "legendFormat": "{{status_class}}" }]
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Protection signals: 429 / 401 / backend timeouts / retries (per s)", "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(gateway_rate_limited_total{route=~\"$route\"}[1m]))", "legendFormat": "rate limited (429)" },
+        { "refId": "B", "expr": "sum(rate(gateway_auth_failures_total{route=~\"$route\"}[1m]))", "legendFormat": "auth failures (401)" },
+        { "refId": "C", "expr": "sum(rate(gateway_backend_timeouts_total{route=~\"$route\"}[1m]))", "legendFormat": "backend timeouts (504)" },
+        { "refId": "D", "expr": "sum(rate(gateway_retries_total{route=~\"$route\"}[1m]))", "legendFormat": "retries" }
+      ]
+    },
+    {
+      "id": 6, "type": "stat", "title": "Config snapshot age (s) - per gateway", "gridPos": { "x": 12, "y": 16, "w": 6, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 30 }, { "color": "red", "value": 120 }] } }, "overrides": [] },
+      "targets": [{ "refId": "A", "expr": "gateway_snapshot_age_seconds", "legendFormat": "{{instance}}" }]
+    },
+    {
+      "id": 7, "type": "stat", "title": "Rate limiter Redis failures (5m)", "gridPos": { "x": 18, "y": 16, "w": 6, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(increase(gateway_ratelimit_redis_failures_total[5m]))" }]
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "JVM heap used (MiB)", "gridPos": { "x": 0, "y": 24, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum by (application, instance) (jvm_memory_used_bytes{area=\"heap\"}) / 1048576", "legendFormat": "{{application}} {{instance}}" }]
+    },
+    {
+      "id": 9, "type": "timeseries", "title": "GC pause time (s/s) and CPU", "gridPos": { "x": 8, "y": 24, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum by (application) (rate(jvm_gc_pause_seconds_sum[1m]))", "legendFormat": "GC {{application}}" },
+        { "refId": "B", "expr": "process_cpu_usage", "legendFormat": "CPU {{application}}" }
+      ]
+    },
+    {
+      "id": 10, "type": "timeseries", "title": "DB pool (control plane): active / pending / max", "gridPos": { "x": 16, "y": 24, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "hikaricp_connections_active{application=\"control-plane\"}", "legendFormat": "active" },
+        { "refId": "B", "expr": "hikaricp_connections_pending{application=\"control-plane\"}", "legendFormat": "pending" },
+        { "refId": "C", "expr": "hikaricp_connections_max{application=\"control-plane\"}", "legendFormat": "max" }
+      ]
+    }
+  ]
+}

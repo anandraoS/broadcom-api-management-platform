@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: gateway, namespace: api-platform }
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: api-platform
+  labels: { app: gateway, app.kubernetes.io/part-of: api-platform }
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5
+  selector: { matchLabels: { app: gateway } }
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  template:
+    metadata:
+      labels: { app: gateway }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/path: /actuator/prometheus, prometheus.io/port: "8081" }
+    spec:
+      serviceAccountName: gateway
+      # in-flight proxied requests finish: preStop 10s + app shutdown timeout 25s < 40s grace period
+      terminationGracePeriodSeconds: 40
+      securityContext: { runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, seccompProfile: { type: RuntimeDefault } }
+      topologySpreadConstraints:
+        - { maxSkew: 1, topologyKey: topology.kubernetes.io/zone, whenUnsatisfiable: ScheduleAnyway, labelSelector: { matchLabels: { app: gateway } } }
+      containers:
+        - name: gateway
+          image: registry.example.com/api-platform/gateway:1.0.0   # pin by digest in production
+          ports: [{ name: http, containerPort: 8081 }]
+          envFrom:
+            - configMapRef: { name: platform-config }
+            - secretRef: { name: platform-secrets }
+          env:
+            - { name: HOSTNAME, valueFrom: { fieldRef: { fieldPath: metadata.name } } }
+          resources:
+            requests: { cpu: 500m, memory: 384Mi }
+            limits: { cpu: "2", memory: 512Mi }
+          startupProbe:   { httpGet: { path: /actuator/health/liveness, port: http }, periodSeconds: 5, failureThreshold: 30 }
+          # readiness includes "a configuration snapshot is loaded": a pod without config must not receive traffic
+          readinessProbe: { httpGet: { path: /actuator/health/readiness, port: http }, periodSeconds: 5, failureThreshold: 3 }
+          livenessProbe:  { httpGet: { path: /actuator/health/liveness, port: http }, periodSeconds: 10, failureThreshold: 3 }
+          lifecycle:
+            preStop: { exec: { command: ["sh", "-c", "sleep 10"] } }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            - { name: snapshot-cache, mountPath: /var/lib/gateway }
+      volumes:
+        - { name: tmp, emptyDir: { sizeLimit: 64Mi } }
+        # last-known-good config survives container restarts (not pod rescheduling) so a restart during a control-plane outage still serves
+        - { name: snapshot-cache, emptyDir: { sizeLimit: 16Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: gateway, namespace: api-platform, labels: { app: gateway } }
+spec:
+  selector: { app: gateway }
+  ports: [{ name: http, port: 8081, targetPort: http }]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: gateway, namespace: api-platform }
+spec:
+  maxUnavailable: 1
+  selector: { matchLabels: { app: gateway } }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: gateway, namespace: api-platform }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: gateway }
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: 60 } }
+  behavior:
+    scaleUp:   { stabilizationWindowSeconds: 0,   policies: [{ type: Percent, value: 100, periodSeconds: 30 }] }
+    scaleDown: { stabilizationWindowSeconds: 300, policies: [{ type: Pods, value: 1, periodSeconds: 60 }] }

@@ -1,0 +1,84 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- $name := .Release.Name }}
+# Default deny + explicit allows (see infrastructure/k8s/40-ingress-networkpolicy.yaml for the annotated plain-YAML version)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: {{ $name }}-default-deny }
+spec:
+  podSelector: { matchLabels: { app.kubernetes.io/instance: {{ $name }} } }
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: {{ $name }}-allow-dns }
+spec:
+  podSelector: { matchLabels: { app.kubernetes.io/instance: {{ $name }} } }
+  policyTypes: [Egress]
+  egress:
+    - to: [{ namespaceSelector: {}, podSelector: { matchLabels: { k8s-app: kube-dns } } }]
+      ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: {{ $name }}-gateway }
+spec:
+  podSelector: { matchLabels: { app.kubernetes.io/name: gateway, app.kubernetes.io/instance: {{ $name }} } }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: {{ .Values.networkPolicy.ingressNamespace }} } }
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: {{ .Values.networkPolicy.observabilityNamespace }} } }
+      ports: [{ protocol: TCP, port: {{ .Values.components.gateway.port }} }]
+  egress:
+    - to: [{ podSelector: { matchLabels: { app.kubernetes.io/name: control-plane, app.kubernetes.io/instance: {{ $name }} } } }]
+      ports: [{ protocol: TCP, port: {{ .Values.components.controlPlane.port }} }]
+    - to: [{ podSelector: { matchLabels: { app: redis } } }]
+      ports: [{ protocol: TCP, port: 6379 }]
+    - to: [{ podSelector: { matchLabels: { app.kubernetes.io/name: orders-service, app.kubernetes.io/instance: {{ $name }} } } }]
+      ports: [{ protocol: TCP, port: {{ .Values.components.ordersService.port }} }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: {{ .Values.networkPolicy.observabilityNamespace }} } } }]
+      ports: [{ protocol: TCP, port: 4318 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: {{ $name }}-control-plane }
+spec:
+  podSelector: { matchLabels: { app.kubernetes.io/name: control-plane, app.kubernetes.io/instance: {{ $name }} } }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app.kubernetes.io/name: gateway, app.kubernetes.io/instance: {{ $name }} } }
+        - podSelector: { matchLabels: { app.kubernetes.io/name: frontend, app.kubernetes.io/instance: {{ $name }} } }
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: {{ .Values.networkPolicy.observabilityNamespace }} } }
+      ports: [{ protocol: TCP, port: {{ .Values.components.controlPlane.port }} }]
+  egress:
+    - to: [{ podSelector: { matchLabels: { app: mysql } } }]
+      ports: [{ protocol: TCP, port: 3306 }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: {{ .Values.networkPolicy.observabilityNamespace }} } } }]
+      ports: [{ protocol: TCP, port: 4318 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: {{ $name }}-frontend }
+spec:
+  podSelector: { matchLabels: { app.kubernetes.io/name: frontend, app.kubernetes.io/instance: {{ $name }} } }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: {{ .Values.networkPolicy.ingressNamespace }} } } }]
+      ports: [{ protocol: TCP, port: {{ .Values.components.frontend.port }} }]
+  egress:
+    - to: [{ podSelector: { matchLabels: { app.kubernetes.io/name: control-plane, app.kubernetes.io/instance: {{ $name }} } } }]
+      ports: [{ protocol: TCP, port: {{ .Values.components.controlPlane.port }} }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: {{ $name }}-orders-service }
+spec:
+  podSelector: { matchLabels: { app.kubernetes.io/name: orders-service, app.kubernetes.io/instance: {{ $name }} } }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app.kubernetes.io/name: gateway, app.kubernetes.io/instance: {{ $name }} } }
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: {{ .Values.networkPolicy.observabilityNamespace }} } }
+      ports: [{ protocol: TCP, port: {{ .Values.components.ordersService.port }} }]
+{{- end }}

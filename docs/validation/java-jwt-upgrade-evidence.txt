@@ -1,0 +1,29 @@
+# java-jwt 4.4.0 -> 4.6.2 upgrade, gateway module (executed)
+
+## before (4.4.0)
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.002 s -- in io.apiplatform.gateway.InMemoryRateLimiterTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.539 s -- in io.apiplatform.gateway.proxy.PathSafetyTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.250 s -- in io.apiplatform.gateway.ResilientRateLimiterTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.795 s -- in io.apiplatform.gateway.RouteTableTest
+[INFO] Tests run: 24, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 22, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 39.92 s -- in io.apiplatform.gateway.proxy.GatewayRoutingIT
+[WARNING] Tests run: 2, Failures: 0, Errors: 0, Skipped: 2, Time elapsed: 0.002 s -- in io.apiplatform.gateway.RedisRateLimiterIT
+[WARNING] Tests run: 24, Failures: 0, Errors: 0, Skipped: 2
+[INFO] BUILD SUCCESS
+
+## after (4.6.2)
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.252 s -- in io.apiplatform.gateway.InMemoryRateLimiterTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.299 s -- in io.apiplatform.gateway.proxy.PathSafetyTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.045 s -- in io.apiplatform.gateway.ResilientRateLimiterTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.556 s -- in io.apiplatform.gateway.RouteTableTest
+[INFO] Tests run: 24, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 22, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 30.08 s -- in io.apiplatform.gateway.proxy.GatewayRoutingIT
+[WARNING] Tests run: 2, Failures: 0, Errors: 0, Skipped: 2, Time elapsed: 0.002 s -- in io.apiplatform.gateway.RedisRateLimiterIT
+[WARNING] Tests run: 24, Failures: 0, Errors: 0, Skipped: 2
+[INFO] BUILD SUCCESS
+
+## dependency tree after
+[INFO] \- com.auth0:java-jwt:jar:4.6.2:compile
+[INFO]    +- com.fasterxml.jackson.core:jackson-core:jar:2.17.2:compile
+[INFO]    \- com.fasterxml.jackson.core:jackson-databind:jar:2.17.2:compile
+[INFO]       \- com.fasterxml.jackson.core:jackson-annotations:jar:2.17.2:compile

@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: api-platform
+resources:
+  - 00-namespace-config.yaml
+  - 10-control-plane.yaml
+  - 20-gateway.yaml
+  - 30-frontend-sample.yaml
+  - 40-ingress-networkpolicy.yaml
+  # - 50-data-stores-demo.yaml   # enable only for laptop clusters; use managed MySQL/Redis in production

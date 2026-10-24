@@ -1,0 +1,67 @@
+# npm audit report
+
+braces  *
+Severity: high
+braces vulnerable to stack-exhaustion denial of service through deeply nested patterns - https://github.com/advisories/GHSA-vfj7-8cjw-p6xm
+fix available via `npm audit fix --force`
+Will install karma@4.0.0, which is a breaking change
+node_modules/braces
+  chokidar  2.0.0 - 3.6.0
+  Depends on vulnerable versions of braces
+  node_modules/karma/node_modules/chokidar
+    karma  >=2.0.3
+    Depends on vulnerable versions of braces
+    Depends on vulnerable versions of chokidar
+    node_modules/karma
+      @angular/build  >=19.2.0-next.0
+      Depends on vulnerable versions of karma
+      node_modules/@angular/build
+      karma-jasmine  >=5.0.0
+      Depends on vulnerable versions of karma
+      node_modules/karma-jasmine
+      karma-jasmine-html-reporter  >=2.0.0
+      Depends on vulnerable versions of karma
+      Depends on vulnerable versions of karma-jasmine
+      node_modules/karma-jasmine-html-reporter
+  micromatch  >=0.2.0
+  Depends on vulnerable versions of braces
+  node_modules/micromatch
+    fast-glob  *
+    Depends on vulnerable versions of micromatch
+    node_modules/fast-glob
+      @typescript-eslint/typescript-estree  8.2.1-alpha.0 - 8.47.1-alpha.9
+      Depends on vulnerable versions of fast-glob
+      node_modules/@typescript-eslint/eslint-plugin/node_modules/@typescript-eslint/typescript-estree
+      node_modules/@typescript-eslint/parser/node_modules/@typescript-eslint/typescript-estree
+      node_modules/@typescript-eslint/type-utils/node_modules/@typescript-eslint/typescript-estree
+      node_modules/typescript-eslint/node_modules/@typescript-eslint/typescript-estree
+        @typescript-eslint/parser  8.2.1-alpha.0 - 8.47.1-alpha.9
+        Depends on vulnerable versions of @typescript-eslint/typescript-estree
+        node_modules/@typescript-eslint/parser
+          typescript-eslint  8.2.1-alpha.0 - 8.47.1-alpha.9
+          Depends on vulnerable versions of @typescript-eslint/eslint-plugin
+          Depends on vulnerable versions of @typescript-eslint/parser
+          Depends on vulnerable versions of @typescript-eslint/typescript-estree
+          Depends on vulnerable versions of @typescript-eslint/utils
+          node_modules/typescript-eslint
+        @typescript-eslint/type-utils  8.2.1-alpha.0 - 8.47.1-alpha.9
+        Depends on vulnerable versions of @typescript-eslint/typescript-estree
+        Depends on vulnerable versions of @typescript-eslint/utils
+        node_modules/@typescript-eslint/type-utils
+        @typescript-eslint/utils  8.2.1-alpha.0 - 8.47.1-alpha.9
+        Depends on vulnerable versions of @typescript-eslint/typescript-estree
+        node_modules/@typescript-eslint/eslint-plugin/node_modules/@typescript-eslint/utils
+        node_modules/@typescript-eslint/type-utils/node_modules/@typescript-eslint/utils
+        node_modules/typescript-eslint/node_modules/@typescript-eslint/utils
+          @typescript-eslint/eslint-plugin  8.2.1-alpha.0 - 8.47.1-alpha.9
+          Depends on vulnerable versions of @typescript-eslint/type-utils
+          Depends on vulnerable versions of @typescript-eslint/utils
+          node_modules/@typescript-eslint/eslint-plugin
+
+14 high severity vulnerabilities
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force

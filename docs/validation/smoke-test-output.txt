@@ -1,0 +1,42 @@
+PASS  token issued for admin (yes)
+--- gateway routing and authentication
+PASS  unknown route -> 404 (404)
+PASS  no api key -> 401 (401)
+PASS  wrong api key -> 401 (401)
+PASS  valid api key -> 200 (200)
+PASS  backend order returned through gateway
+PASS  correlation id echoed
+PASS  DELETE not allowed -> 405 (405)
+PASS  path traversal -> 400 (400)
+PASS  oversized body -> 413 (413)
+--- load balancing across two targets
+PASS  traffic reaches orders-1
+PASS  traffic reaches orders-2
+--- control-plane authorization
+PASS  anonymous API call -> 401 (401)
+PASS  viewer cannot create API -> 403 (403)
+PASS  orders API found in registry (yes)
+PASS  owner of other team cannot modify -> 403 (403)
+--- SSRF: unsafe backend destinations are rejected
+PASS  reject target http://169.254.169.254 (422)
+PASS  reject target http://evil.example.org (422)
+PASS  reject target file:///etc/passwd (422)
+--- policy change: submit -> approve -> propagate -> enforce -> revert
+PASS  invalid policy rejected -> 422 (422)
+PASS  policy submitted (yes)
+PASS  self approval blocked -> 403 (403)
+PASS  approver approves -> 200 (200)
+PASS  gateway enforces new rate limit (yes)
+INFO  observed approve->enforced delay: 5931 ms (gateway polls every 2s locally; this is NOT instantaneous)
+PASS  revert to v1 -> 200 (200)
+--- audit and incidents
+PASS  audit has POLICY_APPROVED
+PASS  audit has POLICY_REVERTED
+PASS  audit has TARGET_REJECTED
+PASS  incident report finds synthetic 5xx spike
+PASS  incident report includes suggested steps
+--- gateway metrics
+PASS  route metrics exposed
+PASS  rate-limit counter exposed
+
+ALL CHECKS PASSED

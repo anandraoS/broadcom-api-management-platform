@@ -1,0 +1,10 @@
+# Replace the example teams with real GitHub teams. Security-sensitive areas require an owner review.
+*                                   @example-org/platform
+/control-plane/src/main/java/io/apiplatform/controlplane/security/   @example-org/security @example-org/platform
+/control-plane/src/main/java/io/apiplatform/controlplane/policy/     @example-org/security @example-org/platform
+/control-plane/src/main/resources/db/migration/                      @example-org/dba @example-org/platform
+/gateway/                           @example-org/gateway @example-org/security
+/infrastructure/                    @example-org/sre
+/.github/                           @example-org/sre @example-org/security
+/ai-engineering/                    @example-org/platform
+/frontend/                          @example-org/ui

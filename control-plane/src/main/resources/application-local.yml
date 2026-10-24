@@ -1,0 +1,28 @@
+# Local demo profile (no Docker): in-memory H2 in MySQL mode, dev identity provider, synthetic data.
+# NOT for production. All values are dummy local-only defaults; override via environment variables.
+spring:
+  datasource:
+    url: jdbc:h2:mem:apiplatform;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+app:
+  security:
+    jwt-secret: ${JWT_SECRET:local-demo-only-secret-change-me-0123456789}
+    gateway-token: ${GATEWAY_SERVICE_TOKEN:local-demo-gateway-token}
+  dev-auth:
+    enabled: true
+    password: ${DEV_AUTH_PASSWORD:local-demo-password}
+  destinations:
+    allowed-hosts: localhost
+    allow-loopback: true
+  seed:
+    enabled: true
+    demo-api-key: ${DEMO_API_KEY:kdemo.local-demo-only-key-0123456789abcdef}
+management:
+  tracing:
+    sampling:
+      probability: 0.0

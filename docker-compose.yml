@@ -1,0 +1,179 @@
+# Local development stack. All credentials come from .env (copy .env.example) - nothing secret is baked in.
+#   docker compose up --build                 # full stack, one gateway
+#   docker compose --profile ha up --build    # + second gateway sharing the Redis rate limiter
+# URLs: UI http://localhost:4200  gateway http://localhost:8081  control-plane http://localhost:8080/swagger-ui.html
+#       Grafana http://localhost:3000  Prometheus http://localhost:9090  Jaeger http://localhost:16686
+# NOT validated in this repository's build environment (no Docker available) - see docs/validation/validation-report.md.
+name: broadcom-api-platform
+
+x-java-common: &java-common
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: ["ALL"]
+  read_only: true
+  tmpfs: ["/tmp"]
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: apiplatform
+      MYSQL_USER: apiplatform
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci", "--slow_query_log=ON", "--long_query_time=0.5"]
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes: ["mysql-data:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [backend]
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    # no persistence: rate-limit counters are ephemeral by design
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, timeout: 3s, retries: 10 }
+    networks: [backend]
+
+  orders-service-1:
+    <<: *java-common
+    build: { context: ., dockerfile: sample-services/orders-service/Dockerfile }
+    image: api-platform/orders-service:1.0.0
+    environment: { PORT: "9001", INSTANCE_NAME: orders-1 }
+    networks: [backend]
+
+  orders-service-2:
+    <<: *java-common
+    image: api-platform/orders-service:1.0.0
+    environment: { PORT: "9001", INSTANCE_NAME: orders-2 }
+    depends_on: [orders-service-1]
+    networks: [backend]
+
+  control-plane:
+    <<: *java-common
+    build: { context: ., dockerfile: control-plane/Dockerfile }
+    image: api-platform/control-plane:1.0.0
+    depends_on:
+      mysql: { condition: service_healthy }
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/apiplatform?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: apiplatform
+      DB_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      DEV_AUTH_ENABLED: "true"            # demo only: local identity provider
+      DEV_AUTH_PASSWORD: ${DEV_AUTH_PASSWORD:?set DEV_AUTH_PASSWORD in .env}
+      GATEWAY_SERVICE_TOKEN: ${GATEWAY_SERVICE_TOKEN:?set GATEWAY_SERVICE_TOKEN in .env}
+      CORS_ORIGINS: http://localhost:4200
+      ALLOWED_BACKEND_HOSTS: orders-service-1,orders-service-2
+      SEED_ENABLED: "true"
+      SEED_ORDERS_TARGETS: http://orders-service-1:9001,http://orders-service-2:9001
+      DEMO_API_KEY: ${DEMO_API_KEY:?set DEMO_API_KEY in .env}
+      OTLP_TRACES_ENDPOINT: http://jaeger:4318/v1/traces
+      TRACE_SAMPLING: ${TRACE_SAMPLING:-0.5}
+    ports: ["8080:8080"]
+    networks: [backend, edge]
+
+  gateway:
+    <<: *java-common
+    build: { context: ., dockerfile: gateway/Dockerfile }
+    image: api-platform/gateway:1.0.0
+    depends_on: [control-plane, redis]
+    environment: &gateway-env
+      CONTROL_PLANE_URL: http://control-plane:8080
+      GATEWAY_SERVICE_TOKEN: ${GATEWAY_SERVICE_TOKEN:?set GATEWAY_SERVICE_TOKEN in .env}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      ALLOWED_BACKEND_HOSTS: orders-service-1,orders-service-2
+      REDIS_ENABLED: "true"
+      REDIS_HOST: redis
+      REDIS_FAIL_MODE: LOCAL
+      EXPECTED_REPLICAS: "2"
+      OTLP_TRACES_ENDPOINT: http://jaeger:4318/v1/traces
+      TRACE_SAMPLING: ${TRACE_SAMPLING:-0.5}
+      HOSTNAME: gateway-1
+    volumes: ["gateway-1-cache:/var/lib/gateway"]
+    ports: ["8081:8081"]
+    networks: [backend, edge]
+
+  gateway-2:
+    <<: *java-common
+    image: api-platform/gateway:1.0.0
+    profiles: ["ha"]
+    depends_on: [control-plane, redis]
+    environment:
+      <<: *gateway-env
+      HOSTNAME: gateway-2
+    volumes: ["gateway-2-cache:/var/lib/gateway"]
+    ports: ["8082:8081"]
+    networks: [backend, edge]
+
+  frontend:
+    build: { context: frontend }
+    image: api-platform/frontend:1.0.0
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ["/tmp", "/var/cache/nginx"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    depends_on: [control-plane]
+    ports: ["4200:8080"]
+    networks: [edge]
+
+  # Alternative console built with React (same features and API as the Angular one): docker compose --profile react up
+  frontend-react:
+    profiles: ["react"]
+    build: { context: frontend-react }
+    image: api-platform/frontend-react:1.0.0
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ["/tmp", "/var/cache/nginx"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    depends_on: [control-plane]
+    ports: ["4300:8080"]
+    networks: [edge]
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    restart: unless-stopped
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=3d"]
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+    ports: ["9090:9090"]
+    networks: [backend, edge]
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["3000:3000"]
+    depends_on: [prometheus]
+    networks: [backend, edge]
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    restart: unless-stopped
+    environment: { COLLECTOR_OTLP_ENABLED: "true" }
+    ports: ["16686:16686"]
+    networks: [backend, edge]
+
+networks:
+  backend: { internal: false }
+  edge: {}
+
+volumes:
+  mysql-data: {}
+  gateway-1-cache: {}
+  gateway-2-cache: {}

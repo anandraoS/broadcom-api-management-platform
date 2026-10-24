@@ -1,0 +1,29 @@
+{{- if .Values.ingress.enabled }}
+{{- $gw := dict "root" . "comp" .Values.components.gateway }}
+{{- $fe := dict "root" . "comp" .Values.components.frontend }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}
+  {{- with .Values.ingress.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts: [{{ .Values.ingress.gatewayHost | quote }}, {{ .Values.ingress.consoleHost | quote }}]
+      secretName: {{ .Values.ingress.tlsSecretName }}
+  rules:
+    - host: {{ .Values.ingress.gatewayHost | quote }}
+      http:
+        paths:
+          - path: /gw/
+            pathType: Prefix
+            backend: { service: { name: {{ include "ap.fullname" $gw }}, port: { number: {{ .Values.components.gateway.port }} } } }
+    - host: {{ .Values.ingress.consoleHost | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: {{ include "ap.fullname" $fe }}, port: { number: {{ .Values.components.frontend.port }} } } }
+{{- end }}

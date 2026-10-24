@@ -1,0 +1,28 @@
+"""Read-only operational graph: lets the dashboard fetch an API, its versions/targets and related events in one call."""
+type Query {
+    apis(q: String, lifecycle: String, owner: String, page: Int = 0, size: Int = 20): ApiPage!
+    api(id: ID!): Api
+    healthSummary(windowMinutes: Int = 15): HealthSummary!
+    recentEvents(route: String, limit: Int = 20): [OperationalEvent!]!
+}
+
+type ApiPage { content: [Api!]! page: Int! size: Int! totalElements: Float! totalPages: Int! }
+
+type Api {
+    id: ID!
+    slug: String!
+    name: String!
+    ownerTeam: String!
+    lifecycle: String!
+    description: String
+    versions: [ApiVersion!]!
+    events(limit: Int = 10): [OperationalEvent!]!
+}
+
+type ApiVersion { id: ID! label: String! basePath: String! status: String! targets: [Target!]! }
+type Target { id: ID! url: String! weight: Int! healthPath: String! }
+
+type HealthSummary { windowMinutes: Int! totalRequests: Float! errorRate: Float! routes: [RouteHealth!]! }
+type RouteHealth { route: String! requests: Float! errors5xx: Float! errorRate: Float! avgLatencyMs: Float! rateLimited: Float! timeouts: Float! }
+
+type OperationalEvent { id: ID! ts: String! type: String! severity: String! routeSlug: String message: String! }

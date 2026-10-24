@@ -1,0 +1,77 @@
+server:
+  port: ${PORT:8081}
+  shutdown: graceful
+  tomcat:
+    connection-timeout: 10s
+    max-swallow-size: 2MB
+    max-http-response-header-size: 16KB
+    threads:
+      max: 200
+spring:
+  application:
+    name: gateway
+  lifecycle:
+    timeout-per-shutdown-phase: 25s     # in-flight proxied requests may finish; keep < k8s terminationGracePeriodSeconds
+  threads:
+    virtual:
+      enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 200ms                     # Lettuce default is 60s: a dead Redis must fail fast, not stall requests
+      connect-timeout: 500ms
+gateway:
+  instance-id: ${HOSTNAME:gw-local}
+  control-plane-url: ${CONTROL_PLANE_URL:http://localhost:8080}
+  service-token: ${GATEWAY_SERVICE_TOKEN:}
+  snapshot-poll-ms: ${SNAPSHOT_POLL_MS:5000}
+  jwt-secret: ${JWT_SECRET:}              # dev identity mode only; production verifies via OIDC JWKS
+  jwt-issuer: ${JWT_ISSUER:api-platform-dev}
+  allowed-hosts: ${ALLOWED_BACKEND_HOSTS:localhost,orders-service-1,orders-service-2}
+  allow-loopback: ${ALLOW_LOOPBACK_BACKENDS:false}
+  redis-enabled: ${REDIS_ENABLED:false}
+  redis-fail-mode: ${REDIS_FAIL_MODE:LOCAL}
+  redis-fallback-replicas: ${EXPECTED_REPLICAS:2}
+  max-concurrent-per-route: ${MAX_CONCURRENT_PER_ROUTE:200}
+  max-response-bytes: 10485760
+  max-retry-attempts: 3
+  retry-base-delay-ms: 50
+  breaker-failure-threshold: 5
+  breaker-open-ms: 10000
+  health-check-ms: ${HEALTH_CHECK_MS:5000}
+  telemetry-flush-ms: ${TELEMETRY_FLUSH_MS:15000}
+  trust-forwarded-for: ${TRUST_FORWARDED_FOR:false}   # true only behind a trusted proxy/ingress that overwrites XFF
+  snapshot-cache-file: ${SNAPSHOT_CACHE_FILE:}        # last-known-good config on disk: lets a restarted pod serve while the control plane is down
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,snapshot   # not Ready until a configuration snapshot (live or cached) is loaded
+  health:
+    redis:
+      enabled: false     # a Redis outage must degrade rate limiting, not make the pod NotReady
+  metrics:
+    tags:
+      application: gateway
+    distribution:
+      percentiles-histogram:
+        gateway.requests: true
+      slo:
+        gateway.requests: 50ms,100ms,250ms,500ms,1s,2s,5s
+  tracing:
+    sampling:
+      probability: ${TRACE_SAMPLING:0.1}
+  otlp:
+    tracing:
+      endpoint: ${OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}] [cid=%X{correlationId:-}]"

@@ -1,0 +1,5 @@
+url=http://localhost:8081/gw/unknown/x concurrency=32 duration=10.0s
+requests=44467 throughput=4444 req/s transportErrors=0
+latency ms: p50=3.37 p90=10.41 p95=22.42 p99=90.68 max=323.98
+status counts: {404=44467}
+client: availableProcessors=8

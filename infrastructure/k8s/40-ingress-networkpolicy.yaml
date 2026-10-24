@@ -1,0 +1,101 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-platform
+  namespace: api-platform
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: 2m
+    nginx.ingress.kubernetes.io/limit-rps: "50"           # coarse edge limit in front of the gateway's own limiter
+    cert-manager.io/cluster-issuer: letsencrypt-prod        # example: TLS certificate automation
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [api.example.com, api-console.example.com]
+      secretName: api-platform-tls
+  rules:
+    - host: api.example.com            # data plane: consumers call /gw/<api>/<version>/...
+      http: { paths: [{ path: /gw/, pathType: Prefix, backend: { service: { name: gateway, port: { number: 8081 } } } }] }
+    - host: api-console.example.com    # management UI + control-plane API (behind SSO / IP allowlist in production)
+      http: { paths: [{ path: /, pathType: Prefix, backend: { service: { name: frontend, port: { number: 8080 } } } }] }
+---
+# Default deny, then open only the flows the architecture needs.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny, namespace: api-platform }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-dns-egress, namespace: api-platform }
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to: [{ namespaceSelector: {}, podSelector: { matchLabels: { k8s-app: kube-dns } } }]
+      ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: gateway, namespace: api-platform }
+spec:
+  podSelector: { matchLabels: { app: gateway } }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ingress-nginx } } }]
+      ports: [{ protocol: TCP, port: 8081 }]
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: observability } } }]
+      ports: [{ protocol: TCP, port: 8081 }]
+  egress:   # only the control plane, Redis, and approved backends - the gateway cannot reach anything else (SSRF blast-radius limit)
+    - to: [{ podSelector: { matchLabels: { app: control-plane } } }]
+      ports: [{ protocol: TCP, port: 8080 }]
+    - to: [{ podSelector: { matchLabels: { app: redis } } }]
+      ports: [{ protocol: TCP, port: 6379 }]
+    - to: [{ podSelector: { matchLabels: { app: orders-service } } }]
+      ports: [{ protocol: TCP, port: 9001 }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: observability } } }]
+      ports: [{ protocol: TCP, port: 4318 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: control-plane, namespace: api-platform }
+spec:
+  podSelector: { matchLabels: { app: control-plane } }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app: gateway } } }, { podSelector: { matchLabels: { app: frontend } } }]
+      ports: [{ protocol: TCP, port: 8080 }]
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: observability } } }]
+      ports: [{ protocol: TCP, port: 8080 }]
+  egress:
+    - to: [{ podSelector: { matchLabels: { app: mysql } } }]
+      ports: [{ protocol: TCP, port: 3306 }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: observability } } }]
+      ports: [{ protocol: TCP, port: 4318 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: frontend, namespace: api-platform }
+spec:
+  podSelector: { matchLabels: { app: frontend } }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ingress-nginx } } }]
+      ports: [{ protocol: TCP, port: 8080 }]
+  egress:
+    - to: [{ podSelector: { matchLabels: { app: control-plane } } }]
+      ports: [{ protocol: TCP, port: 8080 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: orders-service, namespace: api-platform }
+spec:
+  podSelector: { matchLabels: { app: orders-service } }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app: gateway } } }]   # backends are reachable only through the gateway
+      ports: [{ protocol: TCP, port: 9001 }]
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: observability } } }]
+      ports: [{ protocol: TCP, port: 9001 }]

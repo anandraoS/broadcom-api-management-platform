@@ -1,0 +1,5 @@
+url=http://localhost:9001/orders/1 concurrency=32 duration=15.1s
+requests=26870 throughput=1774 req/s transportErrors=0
+latency ms: p50=10.25 p90=33.98 p95=50.24 p99=140.29 max=951.72
+status counts: {200=26870}
+client: availableProcessors=8

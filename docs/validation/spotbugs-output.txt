@@ -1,0 +1,125 @@
+[INFO] Scanning for projects...
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] Enterprise API Gateway, Security Policy and Observability Control Plane [pom]
+[INFO] control-plane                                                      [jar]
+[INFO] gateway                                                            [jar]
+[INFO] orders-service                                                     [jar]
+[INFO] 
+[INFO] --------------------< io.apiplatform:api-platform >---------------------
+[INFO] Building Enterprise API Gateway, Security Policy and Observability Control Plane 1.0.0 [1/4]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- jacoco:0.8.12:prepare-agent (default) @ api-platform ---
+[INFO] argLine set to -javaagent:C:\\Users\\sahukari.rao\\.m2\\repository\\org\\jacoco\\org.jacoco.agent\\0.8.12\\org.jacoco.agent-0.8.12-runtime.jar=destfile=C:\\Users\\sahukari.rao\\Downloads\\prepearation\\broadcom-api-management-platform\\target\\jacoco.exec
+[INFO] 
+[INFO] >>> spotbugs:4.8.6.6:check (default-cli) > :spotbugs @ api-platform >>>
+[INFO] 
+[INFO] --- spotbugs:4.8.6.6:spotbugs (spotbugs) @ api-platform ---
+[INFO] 
+[INFO] <<< spotbugs:4.8.6.6:check (default-cli) < :spotbugs @ api-platform <<<
+[INFO] 
+[INFO] 
+[INFO] --- spotbugs:4.8.6.6:check (default-cli) @ api-platform ---
+[INFO] 
+[INFO] --------------------< io.apiplatform:control-plane >--------------------
+[INFO] Building control-plane 1.0.0                                       [2/4]
+[INFO]   from control-plane\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- jacoco:0.8.12:prepare-agent (default) @ control-plane ---
+[INFO] argLine set to -javaagent:C:\\Users\\sahukari.rao\\.m2\\repository\\org\\jacoco\\org.jacoco.agent\\0.8.12\\org.jacoco.agent-0.8.12-runtime.jar=destfile=C:\\Users\\sahukari.rao\\Downloads\\prepearation\\broadcom-api-management-platform\\control-plane\\target\\jacoco.exec
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ control-plane ---
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] Copying 3 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ control-plane ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] >>> spotbugs:4.8.6.6:check (default-cli) > :spotbugs @ control-plane >>>
+[INFO] 
+[INFO] --- spotbugs:4.8.6.6:spotbugs (spotbugs) @ control-plane ---
+[INFO] Fork Value is true
+[INFO] Done SpotBugs Analysis....
+[INFO] 
+[INFO] <<< spotbugs:4.8.6.6:check (default-cli) < :spotbugs @ control-plane <<<
+[INFO] 
+[INFO] 
+[INFO] --- spotbugs:4.8.6.6:check (default-cli) @ control-plane ---
+[INFO] BugInstance size is 0
+[INFO] Error size is 0
+[INFO] No errors/warnings found
+[INFO] 
+[INFO] -----------------------< io.apiplatform:gateway >-----------------------
+[INFO] Building gateway 1.0.0                                             [3/4]
+[INFO]   from gateway\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- jacoco:0.8.12:prepare-agent (default) @ gateway ---
+[INFO] argLine set to -javaagent:C:\\Users\\sahukari.rao\\.m2\\repository\\org\\jacoco\\org.jacoco.agent\\0.8.12\\org.jacoco.agent-0.8.12-runtime.jar=destfile=C:\\Users\\sahukari.rao\\Downloads\\prepearation\\broadcom-api-management-platform\\gateway\\target\\jacoco.exec
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ gateway ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ gateway ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] >>> spotbugs:4.8.6.6:check (default-cli) > :spotbugs @ gateway >>>
+[INFO] 
+[INFO] --- spotbugs:4.8.6.6:spotbugs (spotbugs) @ gateway ---
+[INFO] Fork Value is true
+[INFO] Done SpotBugs Analysis....
+[INFO] 
+[INFO] <<< spotbugs:4.8.6.6:check (default-cli) < :spotbugs @ gateway <<<
+[INFO] 
+[INFO] 
+[INFO] --- spotbugs:4.8.6.6:check (default-cli) @ gateway ---
+[INFO] BugInstance size is 0
+[INFO] Error size is 0
+[INFO] No errors/warnings found
+[INFO] 
+[INFO] -------------------< io.apiplatform:orders-service >--------------------
+[INFO] Building orders-service 1.0.0                                      [4/4]
+[INFO]   from sample-services\orders-service\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- jacoco:0.8.12:prepare-agent (default) @ orders-service ---
+[INFO] argLine set to -javaagent:C:\\Users\\sahukari.rao\\.m2\\repository\\org\\jacoco\\org.jacoco.agent\\0.8.12\\org.jacoco.agent-0.8.12-runtime.jar=destfile=C:\\Users\\sahukari.rao\\Downloads\\prepearation\\broadcom-api-management-platform\\sample-services\\orders-service\\target\\jacoco.exec
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ orders-service ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ orders-service ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] >>> spotbugs:4.8.6.6:check (default-cli) > :spotbugs @ orders-service >>>
+[INFO] 
+[INFO] --- spotbugs:4.8.6.6:spotbugs (spotbugs) @ orders-service ---
+[INFO] Fork Value is true
+[INFO] Done SpotBugs Analysis....
+[INFO] 
+[INFO] <<< spotbugs:4.8.6.6:check (default-cli) < :spotbugs @ orders-service <<<
+[INFO] 
+[INFO] 
+[INFO] --- spotbugs:4.8.6.6:check (default-cli) @ orders-service ---
+[INFO] BugInstance size is 0
+[INFO] Error size is 0
+[INFO] No errors/warnings found
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for Enterprise API Gateway, Security Policy and Observability Control Plane 1.0.0:
+[INFO] 
+[INFO] Enterprise API Gateway, Security Policy and Observability Control Plane SUCCESS [  3.368 s]
+[INFO] control-plane ...................................... SUCCESS [ 15.293 s]
+[INFO] gateway ............................................ SUCCESS [ 15.279 s]
+[INFO] orders-service ..................................... SUCCESS [  4.334 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  38.823 s
+[INFO] Finished at: 2026-10-17T20:30:27+05:30
+[INFO] ------------------------------------------------------------------------

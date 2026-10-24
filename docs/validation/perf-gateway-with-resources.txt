@@ -1,0 +1,10 @@
+url=http://localhost:8081/gw/orders/v1/orders/1 concurrency=32 duration=15.0s
+requests=20356 throughput=1353 req/s transportErrors=0
+latency ms: p50=12.87 p90=46.04 p95=85.91 p99=194.82 max=582.13
+status counts: {200=20356}
+client: availableProcessors=8
+sample: process_cpu_usage gateway=0.19741932060237846 controlplane=0.10732033922705728 orders1=0.11361801949067132 orders2=0.08171667674985086 | heap MiB gateway=36 orders1=47
+sample: process_cpu_usage gateway=0.008929657646043842 controlplane=0.011266113720850795 orders1=0.004842015724054233 orders2=0.003182678450930547 | heap MiB gateway=40 orders1=49
+sample: process_cpu_usage gateway=0.005085391066084784 controlplane=0.010145050304083138 orders1=0.004175306946654707 orders2=0.0045220677135953315 | heap MiB gateway=44 orders1=21
+sample: process_cpu_usage gateway=0.005949323601519851 controlplane=0.005296436015493728 orders1=0.0034398075398511885 orders2=0.00428819367066372 | heap MiB gateway=50 orders1=21
+sample: process_cpu_usage gateway=0.004178728246929941 controlplane=0.0052978102582051 orders1=0.0020874393655308673 orders2=0.0025360230098520884 | heap MiB gateway=54 orders1=23

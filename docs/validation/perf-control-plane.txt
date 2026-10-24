@@ -1,0 +1,12 @@
+== control plane: GET /api/v1/apis (JWT validation + JPA query + pagination)
+url=http://localhost:8080/api/v1/apis?size=20 concurrency=16 duration=12.1s
+requests=6963 throughput=577 req/s transportErrors=0
+latency ms: p50=19.18 p90=55.75 p95=75.94 p99=127.51 max=269.99
+status counts: {200=6963}
+client: availableProcessors=8
+== control plane: GET /actuator/health/liveness (no auth, no DB) - framework floor
+url=http://localhost:8080/actuator/health/liveness concurrency=16 duration=12.0s
+requests=14685 throughput=1221 req/s transportErrors=0
+latency ms: p50=7.07 p90=26.16 p95=44.93 p99=100.98 max=431.41
+status counts: {200=14685}
+client: availableProcessors=8

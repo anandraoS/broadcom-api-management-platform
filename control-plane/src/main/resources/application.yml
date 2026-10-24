@@ -1,0 +1,97 @@
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+  tomcat:
+    max-swallow-size: 2MB
+    connection-timeout: 10s
+    threads:
+      max: 100
+spring:
+  application:
+    name: control-plane
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/apiplatform?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DB_USERNAME:apiplatform}
+    password: ${DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:15}
+      minimum-idle: 3
+      connection-timeout: 3000      # fail fast instead of queueing threads when the pool is exhausted
+      max-lifetime: 1500000
+      leak-detection-threshold: 20000
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate            # schema is owned by Flyway
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
+        jdbc.batch_size: 50
+        order_inserts: true
+  flyway:
+    enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OIDC_ISSUER_URI:}   # production: set to the OIDC provider; leave empty in dev mode
+  graphql:
+    schema:
+      printer:
+        enabled: false
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+app:
+  max-request-bytes: 2097152
+  security:
+    jwt-secret: ${JWT_SECRET:}                      # dev identity mode only (>= 32 bytes); empty in production
+    issuer: ${JWT_ISSUER:api-platform-dev}
+    cors-origins: ${CORS_ORIGINS:http://localhost:4200}
+    gateway-token: ${GATEWAY_SERVICE_TOKEN:}
+  dev-auth:
+    enabled: ${DEV_AUTH_ENABLED:false}
+    password: ${DEV_AUTH_PASSWORD:}
+    token-ttl-seconds: 3600
+    users:
+      - { username: admin, roles: [ADMIN], team: platform }
+      - { username: owner-orders, roles: [API_OWNER], team: orders }
+      - { username: owner-payments, roles: [API_OWNER], team: payments }
+      - { username: approver, roles: [POLICY_APPROVER], team: platform }
+      - { username: operator, roles: [OPERATOR], team: platform }
+      - { username: viewer, roles: [VIEWER], team: platform }
+  destinations:
+    allowed-hosts: ${ALLOWED_BACKEND_HOSTS:localhost,orders-service-1,orders-service-2}
+    allow-loopback: ${ALLOW_LOOPBACK_BACKENDS:false}
+  seed:
+    enabled: ${SEED_ENABLED:false}
+    demo-api-key: ${DEMO_API_KEY:}
+    orders-targets: ${SEED_ORDERS_TARGETS:http://localhost:9001,http://localhost:9002}
+  retention:
+    telemetry-days: 7
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: control-plane
+  tracing:
+    sampling:
+      probability: ${TRACE_SAMPLING:0.1}
+  otlp:
+    tracing:
+      endpoint: ${OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}] [cid=%X{correlationId:-}]"

@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: api-platform
+  labels:
+    # Pod Security Admission: reject pods that need privileges (our workloads comply with "restricted")
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: platform-config
+  namespace: api-platform
+data:
+  # Non-secret settings only. Secrets are referenced from the Secret "platform-secrets" (see secret.example.yaml).
+  CONTROL_PLANE_URL: http://control-plane:8080
+  ALLOWED_BACKEND_HOSTS: "orders-service,*.internal.example.com"
+  ALLOW_LOOPBACK_BACKENDS: "false"
+  REDIS_ENABLED: "true"
+  REDIS_HOST: redis
+  REDIS_FAIL_MODE: LOCAL
+  EXPECTED_REPLICAS: "2"
+  TRUST_FORWARDED_FOR: "true"   # only because the ingress controller overwrites X-Forwarded-For
+  OTLP_TRACES_ENDPOINT: http://otel-collector.observability:4318/v1/traces
+  TRACE_SAMPLING: "0.05"
+  CORS_ORIGINS: https://api-console.example.com
+  DB_URL: jdbc:mysql://mysql:3306/apiplatform?useSSL=true&serverTimezone=UTC
+  DB_USERNAME: apiplatform
+---
+# TEMPLATE ONLY - do not apply with real data in git. Create the real Secret out-of-band, e.g.:
+#   kubectl -n api-platform create secret generic platform-secrets \
+#     --from-literal=DB_PASSWORD=... --from-literal=GATEWAY_SERVICE_TOKEN=... --from-literal=OIDC_ISSUER_URI=...
+# or sync it from a secret manager (External Secrets Operator / CSI driver). Values below are intentionally invalid.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: platform-secrets-example
+  namespace: api-platform
+type: Opaque
+stringData:
+  DB_PASSWORD: "REPLACE_ME"
+  GATEWAY_SERVICE_TOKEN: "REPLACE_ME"
+  OIDC_ISSUER_URI: "https://idp.example.com/realms/platform"

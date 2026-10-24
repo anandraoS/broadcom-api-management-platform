@@ -1,0 +1,79 @@
+# DEMO ONLY. In production use managed MySQL (e.g. Amazon RDS / Aurora MySQL) and managed Redis (ElastiCache) with
+# backups, Multi-AZ and TLS. These manifests exist so the stack can run on a laptop cluster (kind/minikube).
+# Persistent storage considerations: MySQL needs a PVC with a backup/restore plan; Redis is deliberately ephemeral
+# (rate-limit counters may be lost on restart - the limiter fails open to local limits, see docs/rate-limiting.md).
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: data-stores, namespace: api-platform }
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: redis, namespace: api-platform, labels: { app: redis } }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: redis } }
+  template:
+    metadata: { labels: { app: redis } }
+    spec:
+      serviceAccountName: data-stores
+      securityContext: { runAsNonRoot: true, runAsUser: 999, runAsGroup: 999, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: redis
+          image: redis:7.4-alpine
+          args: ["--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+          ports: [{ name: redis, containerPort: 6379 }]
+          resources: { requests: { cpu: 50m, memory: 64Mi }, limits: { cpu: 500m, memory: 192Mi } }
+          readinessProbe: { exec: { command: ["redis-cli", "ping"] }, periodSeconds: 5 }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: ["ALL"] } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: redis, namespace: api-platform }
+spec: { selector: { app: redis }, ports: [{ name: redis, port: 6379, targetPort: redis }] }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: mysql, namespace: api-platform, labels: { app: mysql } }
+spec:
+  serviceName: mysql
+  replicas: 1
+  selector: { matchLabels: { app: mysql } }
+  template:
+    metadata: { labels: { app: mysql } }
+    spec:
+      serviceAccountName: data-stores
+      securityContext: { runAsNonRoot: true, runAsUser: 999, runAsGroup: 999, fsGroup: 999, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: mysql
+          image: mysql:8.4
+          ports: [{ name: mysql, containerPort: 3306 }]
+          env:
+            - { name: MYSQL_DATABASE, value: apiplatform }
+            - { name: MYSQL_USER, value: apiplatform }
+            - { name: MYSQL_PASSWORD, valueFrom: { secretKeyRef: { name: platform-secrets, key: DB_PASSWORD } } }
+            - { name: MYSQL_ROOT_PASSWORD, valueFrom: { secretKeyRef: { name: platform-secrets, key: MYSQL_ROOT_PASSWORD } } }
+          resources: { requests: { cpu: 250m, memory: 512Mi }, limits: { cpu: "1", memory: 1Gi } }
+          readinessProbe: { exec: { command: ["sh", "-c", "mysqladmin ping -h 127.0.0.1 -uroot -p$MYSQL_ROOT_PASSWORD --silent"] }, periodSeconds: 10, initialDelaySeconds: 20 }
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: ["ALL"] } }
+          volumeMounts: [{ name: data, mountPath: /var/lib/mysql }]
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 10Gi } } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: mysql, namespace: api-platform }
+spec: { clusterIP: None, selector: { app: mysql }, ports: [{ name: mysql, port: 3306, targetPort: mysql }] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: data-stores, namespace: api-platform }
+spec:
+  podSelector: { matchExpressions: [{ key: app, operator: In, values: [redis, mysql] }] }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app: gateway } } }]
+      ports: [{ protocol: TCP, port: 6379 }]
+    - from: [{ podSelector: { matchLabels: { app: control-plane } } }]
+      ports: [{ protocol: TCP, port: 3306 }]

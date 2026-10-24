@@ -1,0 +1,47 @@
+:root { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; color: #1f2933; --accent: #0b5cad; --rule: #e1e5ea; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #f6f7f9; }
+a { color: var(--accent); }
+code { background: #eef1f5; padding: 1px 4px; border-radius: 4px; font-size: 0.85em; }
+h1.page-title { margin: 0 0 12px; font-size: 1.4rem; }
+.topbar { background: var(--accent); color: #fff; display: flex; align-items: center; gap: 12px; padding: 0 16px; height: 56px; }
+.topbar .brand { font-weight: 600; } .topbar .spacer { flex: 1; } .topbar .who { font-size: 0.85rem; }
+.topbar button { background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+.layout { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 56px); }
+.sidenav { background: #fff; border-right: 1px solid var(--rule); padding: 8px 0; }
+.sidenav a { display: block; padding: 10px 16px; text-decoration: none; color: inherit; }
+.sidenav a.active { font-weight: 600; background: #eaf1fb; }
+.content { padding: 16px; max-width: 1280px; width: 100%; margin: 0 auto; }
+.menu-btn { display: none; }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .sidenav { display: none; } .sidenav.open { display: block; } .menu-btn { display: inline-block; } .who { display: none; } }
+.toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 12px; }
+.toolbar .spacer { flex: 1; }
+label.field { display: grid; gap: 4px; font-size: 0.85rem; }
+input, select, textarea { font: inherit; padding: 8px; border: 1px solid #b8c0cc; border-radius: 6px; background: #fff; min-width: 180px; }
+input[aria-invalid='true'] { border-color: #b3261e; }
+button.primary { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 9px 16px; cursor: pointer; }
+button.secondary, .pager button, td button { background: #fff; color: var(--accent); border: 1px solid var(--accent); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+form.grid2 { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 16px; align-items: end; }
+form.stack { display: grid; gap: 12px; max-width: 560px; }
+.field-error { color: #b3261e; font-size: 0.8rem; }
+.table-wrap { overflow-x: auto; background: #fff; border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; } th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #eee; vertical-align: top; }
+thead th { background: #f0f3f7; }
+.empty, .error, .loading { padding: 24px; text-align: center; background: #fff; border-radius: 8px; }
+.error { color: #b3261e; } .muted { color: #5f6b7a; font-size: 0.85rem; }
+.progress { height: 4px; background: linear-gradient(90deg, #cfe0f5 0 40%, var(--accent) 40% 60%, #cfe0f5 60%); background-size: 200% 100%; animation: slide 1s linear infinite; }
+@keyframes slide { to { background-position: -200% 0; } }
+.chip { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.75rem; background: #e8eaed; }
+.chip.ACTIVE, .chip.INFO { background: #d7f0dd; } .chip.DRAFT, .chip.PENDING_APPROVAL, .chip.WARN, .chip.MEDIUM { background: #fff0c2; }
+.chip.DEPRECATED, .chip.INACTIVE, .chip.SUPERSEDED { background: #e0e0e0; } .chip.REJECTED, .chip.ERROR, .chip.HIGH, .chip.CRITICAL { background: #f8d4d0; }
+.cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); margin-bottom: 16px; }
+.card { background: #fff; border-radius: 8px; padding: 16px; } .kpi { font-size: 1.8rem; font-weight: 600; } .bad { color: #b3261e; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--rule); margin-bottom: 12px; }
+.tabs button { background: none; border: 0; padding: 10px 16px; cursor: pointer; border-bottom: 3px solid transparent; font: inherit; }
+.tabs button[aria-selected='true'] { border-bottom-color: var(--accent); font-weight: 600; }
+.pager { display: flex; gap: 12px; align-items: center; justify-content: end; padding: 8px 0; }
+pre.mono { background: #fff; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 0.8rem; }
+.secret { background: #fff8e1; padding: 12px; border-radius: 8px; margin-bottom: 12px; }
+.bar { width: 100px; height: 8px; background: #eee; border-radius: 4px; } .bar > div { height: 8px; background: #d93025; border-radius: 4px; }
+.login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 16px; } .login-card { width: min(420px, 100%); background: #fff; padding: 24px; border-radius: 8px; }

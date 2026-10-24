@@ -1,0 +1,19 @@
+server:
+  port: ${PORT:9001}
+  shutdown: graceful
+spring:
+  application:
+    name: orders-service
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+sample:
+  instance: ${INSTANCE_NAME:orders-1}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,info
+  endpoint:
+    health:
+      probes:
+        enabled: true

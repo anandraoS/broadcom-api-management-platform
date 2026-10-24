@@ -1,0 +1,5 @@
+url=http://localhost:8081/gw/orders/v1/orders/1 concurrency=32 duration=10.0s
+requests=34474 throughput=3446 req/s transportErrors=0
+latency ms: p50=4.88 p90=14.81 p95=36.03 p99=88.98 max=219.58
+status counts: {401=34474}
+client: availableProcessors=8
