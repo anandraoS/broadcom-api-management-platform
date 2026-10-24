@@ -69,7 +69,7 @@ services:
       DEV_AUTH_ENABLED: "true"            # demo only: local identity provider
       DEV_AUTH_PASSWORD: ${DEV_AUTH_PASSWORD:?set DEV_AUTH_PASSWORD in .env}
       GATEWAY_SERVICE_TOKEN: ${GATEWAY_SERVICE_TOKEN:?set GATEWAY_SERVICE_TOKEN in .env}
-      CORS_ORIGINS: http://localhost:4200
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:4200,http://localhost:4300}
       ALLOWED_BACKEND_HOSTS: orders-service-1,orders-service-2
       SEED_ENABLED: "true"
       SEED_ORDERS_TARGETS: http://orders-service-1:9001,http://orders-service-2:9001
