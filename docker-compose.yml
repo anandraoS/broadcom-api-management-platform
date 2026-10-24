@@ -123,6 +123,12 @@ services:
     depends_on: [control-plane]
     ports: ["4200:8080"]
     networks: [edge]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
 
   # Alternative console built with React (same features and API as the Angular one): docker compose --profile react up
   frontend-react:
